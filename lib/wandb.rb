@@ -20,8 +20,9 @@ module Wandb
       __pyptr__.Table.new(*args, **kwargs)
     end
 
-    # Expose wandb.plot
-    delegate :plot, to: :__pyptr__
+    def plot(*args, **kwargs)
+      __pyptr__.plot(*args, **kwargs)
+    end
 
     # Expose define_metric
     def define_metric(metric_name, **kwargs)
@@ -33,8 +34,9 @@ module Wandb
       __pyptr__.Artifact.new(*args, **kwargs)
     end
 
-    # Expose wandb.Error
-    delegate :Error, to: :__pyptr__
+    def Error
+      __pyptr__.Error
+    end
 
     # Login to Wandb
     def login(api_key: nil, **kwargs)
