@@ -134,6 +134,7 @@ module Wandb
     def description
       @project.description
     end
+  end
 end
 
 require_relative "wandb/xgboost_callback"
