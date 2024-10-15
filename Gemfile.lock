@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    wandb (0.1.2)
+    wandb (0.1.4)
       pycall
 
 PATH

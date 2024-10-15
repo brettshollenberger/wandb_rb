@@ -7,11 +7,24 @@ module Wandb
     MINIMIZE_METRICS = %w[rmse logloss error] # Add other metrics as needed
     MAXIMIZE_METRICS = %w[auc accuracy] # Add other metrics as needed
 
-    def initialize(log_model: false, log_feature_importance: true, importance_type: "gain", define_metric: true)
-      @log_model = log_model
-      @log_feature_importance = log_feature_importance
-      @importance_type = importance_type
-      @define_metric = define_metric
+    class Opts
+      attr_accessor :options
+
+      def initialize(options = {})
+        @options = options
+      end
+
+      def default(key, default)
+        options.key?(key) ? options[key] : default
+      end
+    end
+
+    def initialize(options = {})
+      options = Opts.new(options)
+      @log_model = options.default(:log_model, false)
+      @log_feature_importance = options.default(:log_feature_importance, true)
+      @importance_type = options.default(:importance_type, "gain")
+      @define_metric = options.default(:define_metric, true)
 
       return if Wandb.current_run
 
@@ -33,33 +46,32 @@ module Wandb
       log_feature_importance(model) if @log_feature_importance
 
       # Log best score and best iteration
-      return unless model.best_score
+      return model unless model.best_score
 
       Wandb.log(
         "best_score" => model.best_score.to_f,
         "best_iteration" => model.best_iteration.to_i
       )
+
+      model
     end
 
-    def before_iteration(model:, epoch:, evals:)
-      # noop
+    def before_iteration(model:, epoch:)
+      true
     end
 
-    def after_iteration(model:, epoch:, evals:, res:)
-      res.each do |metric_name, value|
-        data, metric = metric_name.split("-", 2)
-        full_metric_name = "#{data}-#{metric}"
+    def after_iteration(model:, epoch:, history:)
+      history.each do |split, metric_scores|
+        metric = metric_scores.keys.first
+        values = metric_scores.values.last
+        epoch_value = values[epoch]
 
-        if @define_metric
-          define_metric(data, metric)
-          Wandb.log({ full_metric_name => value })
-        else
-          Wandb.log({ full_metric_name => value })
-        end
+        define_metric(split, metric) if @define_metric && epoch == 0
+        full_metric_name = "#{split}-#{metric}"
+        Wandb.log({ full_metric_name => epoch_value })
       end
-
-      Wandb.log({ "epoch" => epoch })
-      @define_metric = false
+      Wandb.log("epoch" => epoch)
+      true
     end
 
     private
@@ -82,7 +94,7 @@ module Wandb
 
       table = Wandb::Table.new(data: fi_data, columns: %w[Feature Importance])
       bar_plot = Wandb::Plot.bar(table, "Feature", "Importance", title: "Feature Importance")
-      Wandb.log({ "Feature Importance" => bar_plot })
+      Wandb.log({ "Feature Importance" => bar_plot.__pyptr__ })
     end
 
     def define_metric(data, metric_name)

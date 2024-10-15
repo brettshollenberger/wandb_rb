@@ -16,11 +16,6 @@ module Wandb
       @wandb ||= PyCall.import_module("wandb")
     end
 
-    def Table(*args, **kwargs)
-      py_table = __pyptr__.Table.new(*args, **kwargs)
-      Table.new(py_table)
-    end
-
     def plot(*args, **kwargs)
       __pyptr__.plot(*args, **kwargs)
     end
@@ -197,8 +192,12 @@ module Wandb
 
   # Table class
   class Table
-    def initialize(table)
-      @table = table
+    attr_accessor :table, :data, :columns
+
+    def initialize(data: {}, columns: [])
+      @table = Wandb.__pyptr__.Table.new(data: data, columns: columns)
+      @data = data
+      @columns = columns
     end
 
     def __pyptr__
