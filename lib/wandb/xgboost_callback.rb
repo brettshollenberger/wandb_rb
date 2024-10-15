@@ -1,5 +1,9 @@
+require "xgb"
+require "tempfile"
+require "fileutils"
+
 module Wandb
-  class XGBoostCallback
+  class XGBoostCallback < XGBoost::TrainingCallback
     MINIMIZE_METRICS = %w[rmse logloss error] # Add other metrics as needed
     MAXIMIZE_METRICS = %w[auc accuracy] # Add other metrics as needed
 
@@ -18,6 +22,7 @@ module Wandb
       # Update Wandb config with model configuration
       Wandb.current_run.config = model.params
       Wandb.log(model.params)
+      model
     end
 
     def after_training(model:)
@@ -60,21 +65,23 @@ module Wandb
     private
 
     def log_model_as_artifact(model)
-      model_name = "#{Wandb.current_run.id}_model.json"
-      model_path = File.join(Wandb.current_run.dir, model_name)
-      model.save_model(model_path)
+      Dir.mktmpdir("wandb_xgboost_model") do |tmp_dir|
+        model_name = "model.json"
+        model_path = File.join(tmp_dir, model_name)
+        model.save_model(model_path)
 
-      model_artifact = Wandb.Artifact(name: model_name, type: "model")
-      model_artifact.add_file(model_path)
-      Wandb.current_run.log_artifact(model_artifact)
+        model_artifact = Wandb.artifact(name: model_name, type: "model")
+        model_artifact.add_file(model_path)
+        Wandb.current_run.log_artifact(model_artifact)
+      end
     end
 
     def log_feature_importance(model)
       fi = model.score(importance_type: @importance_type)
       fi_data = fi.map { |k, v| [k, v] }
 
-      table = Wandb.Table(data: fi_data, columns: %w[Feature Importance])
-      bar_plot = Wandb.plot.bar(table, "Feature", "Importance", title: "Feature Importance")
+      table = Wandb::Table.new(data: fi_data, columns: %w[Feature Importance])
+      bar_plot = Wandb::Plot.bar(table, "Feature", "Importance", title: "Feature Importance")
       Wandb.log({ "Feature Importance" => bar_plot })
     end
 

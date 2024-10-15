@@ -17,7 +17,8 @@ module Wandb
     end
 
     def Table(*args, **kwargs)
-      __pyptr__.Table.new(*args, **kwargs)
+      py_table = __pyptr__.Table.new(*args, **kwargs)
+      Table.new(py_table)
     end
 
     def plot(*args, **kwargs)
@@ -30,11 +31,12 @@ module Wandb
     end
 
     # Expose wandb.Artifact
-    def Artifact(*args, **kwargs)
-      __pyptr__.Artifact.new(*args, **kwargs)
+    def artifact(*args, **kwargs)
+      py_artifact = __pyptr__.Artifact.new(*args, **kwargs)
+      Artifact.new(py_artifact)
     end
 
-    def Error
+    def error
       __pyptr__.Error
     end
 
@@ -72,12 +74,20 @@ module Wandb
     def api
       @api ||= Api.new(__pyptr__.Api.new)
     end
+
+    def plot
+      Plot
+    end
   end
 
   # Run class
   class Run
     def initialize(run)
       @run = run
+    end
+
+    def run_id
+      @run.run_id
     end
 
     def log(metrics = {})
@@ -103,6 +113,53 @@ module Wandb
 
     def config=(new_config)
       @run.config.update(PyCall::Dict.new(new_config))
+    end
+
+    def log_artifact(artifact)
+      @run.log_artifact(artifact.__pyptr__)
+    end
+  end
+
+  # Artifact class
+  class Artifact
+    def initialize(artifact)
+      @artifact = artifact
+    end
+
+    def __pyptr__
+      @artifact
+    end
+
+    def name
+      @artifact.name
+    end
+
+    def type
+      @artifact.type
+    end
+
+    def add_file(local_path, name = nil)
+      @artifact.add_file(local_path, name)
+    end
+
+    def add_dir(local_dir, name = nil)
+      @artifact.add_dir(local_dir, name)
+    end
+
+    def get_path(name)
+      @artifact.get_path(name)
+    end
+
+    def metadata
+      @artifact.metadata
+    end
+
+    def metadata=(new_metadata)
+      @artifact.metadata = new_metadata
+    end
+
+    def save
+      @artifact.save
     end
   end
 
@@ -135,6 +192,74 @@ module Wandb
 
     def description
       @project.description
+    end
+  end
+
+  # Table class
+  class Table
+    def initialize(table)
+      @table = table
+    end
+
+    def __pyptr__
+      @table
+    end
+
+    def add_data(*args)
+      @table.add_data(*args)
+    end
+
+    def add_column(name, data)
+      @table.add_column(name, data)
+    end
+
+    def get_column(name)
+      @table.get_column(name)
+    end
+
+    def columns
+      @table.columns
+    end
+
+    def data
+      @table.data
+    end
+
+    def to_pandas
+      @table.get_dataframe
+    end
+  end
+
+  # Plot class
+  class Plot
+    class << self
+      def bar(table, x_key, y_key, title: nil)
+        py_plot = Wandb.__pyptr__.plot.bar(table.__pyptr__, x_key, y_key, title: title)
+        new(py_plot)
+      end
+
+      def line(table, x_key, y_key, title: nil)
+        py_plot = Wandb.__pyptr__.plot.line(table.__pyptr__, x_key, y_key, title: title)
+        new(py_plot)
+      end
+
+      def scatter(table, x_key, y_key, title: nil)
+        py_plot = Wandb.__pyptr__.plot.scatter(table.__pyptr__, x_key, y_key, title: title)
+        new(py_plot)
+      end
+
+      def histogram(table, value_key, title: nil)
+        py_plot = Wandb.__pyptr__.plot.histogram(table.__pyptr__, value_key, title: title)
+        new(py_plot)
+      end
+    end
+
+    def initialize(plot)
+      @plot = plot
+    end
+
+    def __pyptr__
+      @plot
     end
   end
 end
