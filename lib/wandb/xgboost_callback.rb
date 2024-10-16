@@ -19,26 +19,36 @@ module Wandb
       end
     end
 
+    attr_accessor :project_name, :api_key
+
     def initialize(options = {})
       options = Opts.new(options)
       @log_model = options.default(:log_model, false)
       @log_feature_importance = options.default(:log_feature_importance, true)
       @importance_type = options.default(:importance_type, "gain")
       @define_metric = options.default(:define_metric, true)
+      @api_key = options.default(:api_key, ENV["WANDB_API_KEY"])
+      @project_name = options.default(:project_name, nil)
+
+      raise "WANDB_API_KEY required" unless api_key
+      raise "project_name required" unless project_name
+
+      Wandb.login(api_key: api_key)
+      Wandb.init(project: project_name)
 
       return if Wandb.current_run
 
       raise "You must call wandb.init() before WandbCallback()"
     end
 
-    def before_training(model:)
+    def before_training(model)
       # Update Wandb config with model configuration
       Wandb.current_run.config = model.params
       Wandb.log(model.params)
       model
     end
 
-    def after_training(model:)
+    def after_training(model)
       # Log the model as an artifact
       log_model_as_artifact(model) if @log_model
 
@@ -53,14 +63,16 @@ module Wandb
         "best_iteration" => model.best_iteration.to_i
       )
 
+      Wandb.finish
+
       model
     end
 
-    def before_iteration(model:, epoch:)
-      true
+    def before_iteration(_model, _epoch, _history)
+      false
     end
 
-    def after_iteration(model:, epoch:, history:)
+    def after_iteration(_model, epoch, history)
       history.each do |split, metric_scores|
         metric = metric_scores.keys.first
         values = metric_scores.values.last
@@ -71,7 +83,7 @@ module Wandb
         Wandb.log({ full_metric_name => epoch_value })
       end
       Wandb.log("epoch" => epoch)
-      true
+      false
     end
 
     private

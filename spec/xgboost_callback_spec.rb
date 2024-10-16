@@ -5,8 +5,15 @@ require "spec_helper"
 RSpec.describe Wandb::XGBoostCallback do
   let(:mock_run) { instance_double(Wandb::Run) }
   let(:mock_model) { instance_double(XGBoost::Booster) }
+  let(:callback_params) do
+    {
+      project_name: "my-great-project"
+    }
+  end
 
   before do
+    allow(Wandb).to receive(:login).and_return(true)
+    allow(Wandb).to receive(:init).and_return(true)
     allow(Wandb).to receive(:current_run).and_return(mock_run)
     allow(mock_run).to receive(:config=)
     allow(Wandb).to receive(:log)
@@ -17,17 +24,20 @@ RSpec.describe Wandb::XGBoostCallback do
       before { allow(Wandb).to receive(:current_run).and_return(nil) }
 
       it "raises an error" do
-        expect { described_class.new }.to raise_error(RuntimeError, "You must call wandb.init() before WandbCallback()")
+        expect do
+          described_class.new(**callback_params)
+        end.to raise_error(RuntimeError,
+                           "You must call wandb.init() before WandbCallback()")
       end
     end
 
     context "when Wandb.current_run is set" do
       it "initializes without error" do
-        expect { described_class.new }.not_to raise_error
+        expect { described_class.new(**callback_params) }.not_to raise_error
       end
 
       it "sets default values" do
-        callback = described_class.new
+        callback = described_class.new(**callback_params)
         expect(callback.instance_variable_get(:@log_model)).to be false
         expect(callback.instance_variable_get(:@log_feature_importance)).to be true
         expect(callback.instance_variable_get(:@importance_type)).to eq "gain"
@@ -36,7 +46,7 @@ RSpec.describe Wandb::XGBoostCallback do
 
       it "allows custom values" do
         callback = described_class.new(log_model: true, log_feature_importance: false, importance_type: "weight",
-                                       define_metric: false)
+                                       define_metric: false, project_name: "my-great-project")
         expect(callback.instance_variable_get(:@log_model)).to be true
         expect(callback.instance_variable_get(:@log_feature_importance)).to be false
         expect(callback.instance_variable_get(:@importance_type)).to eq "weight"
@@ -46,7 +56,7 @@ RSpec.describe Wandb::XGBoostCallback do
   end
 
   describe "#before_training" do
-    let(:callback) { described_class.new }
+    let(:callback) { described_class.new(**callback_params) }
     let(:model_params) { { "max_depth" => 3, "eta" => 0.1 } }
 
     before do
@@ -56,12 +66,14 @@ RSpec.describe Wandb::XGBoostCallback do
     it "updates Wandb config with model parameters" do
       expect(mock_run).to receive(:config=).with(model_params)
       expect(Wandb).to receive(:log).with(model_params)
-      callback.before_training(model: mock_model)
+      callback.before_training(mock_model)
     end
   end
 
   describe "#after_training" do
-    let(:callback) { described_class.new(log_model: true, log_feature_importance: true) }
+    let(:callback) do
+      described_class.new(project_name: "my-great-project", log_model: true, log_feature_importance: true)
+    end
 
     before do
       allow(mock_model).to receive(:best_score).and_return(0.95)
@@ -72,17 +84,17 @@ RSpec.describe Wandb::XGBoostCallback do
 
     it "logs the model as an artifact" do
       expect(callback).to receive(:log_model_as_artifact).with(mock_model)
-      callback.after_training(model: mock_model)
+      callback.after_training(mock_model)
     end
 
     it "logs feature importance" do
       expect(callback).to receive(:log_feature_importance).with(mock_model)
-      callback.after_training(model: mock_model)
+      callback.after_training(mock_model)
     end
 
     it "logs best score and best iteration" do
       expect(Wandb).to receive(:log).with({ "best_score" => 0.95, "best_iteration" => 100 })
-      callback.after_training(model: mock_model)
+      callback.after_training(mock_model)
     end
 
     context "when best_score is nil" do
@@ -90,21 +102,21 @@ RSpec.describe Wandb::XGBoostCallback do
 
       it "does not log best score and best iteration" do
         expect(Wandb).not_to receive(:log)
-        callback.after_training(model: mock_model)
+        callback.after_training(mock_model)
       end
     end
   end
 
   describe "#before_iteration" do
-    let(:callback) { described_class.new }
+    let(:callback) { described_class.new(**callback_params) }
 
     it "does nothing" do
-      expect { callback.before_iteration(model: mock_model, epoch: 1) }.not_to raise_error
+      expect { callback.before_iteration(mock_model, 1, {}) }.not_to raise_error
     end
   end
 
   describe "#after_iteration" do
-    let(:callback) { described_class.new }
+    let(:callback) { described_class.new(**callback_params) }
     let(:history) { { "train" => { "rmse" => [0.1, 0.2] }, "eval" => { "rmse" => [0.9, 1.0] } } }
 
     before do
@@ -115,29 +127,29 @@ RSpec.describe Wandb::XGBoostCallback do
       expect(Wandb).to receive(:log).with({ "train-rmse" => 0.1 })
       expect(Wandb).to receive(:log).with({ "eval-rmse" => 0.9 })
       expect(Wandb).to receive(:log).with({ "epoch" => 0 })
-      callback.after_iteration(model: mock_model, epoch: 0, history: history)
+      callback.after_iteration(mock_model, 0, history)
 
       expect(Wandb).to receive(:log).with({ "train-rmse" => 0.2 })
       expect(Wandb).to receive(:log).with({ "eval-rmse" => 1.0 })
       expect(Wandb).to receive(:log).with({ "epoch" => 1 })
-      callback.after_iteration(model: mock_model, epoch: 1, history: history)
+      callback.after_iteration(mock_model, 1, history)
     end
 
     it "fines metrics on first iteration" do
       expect(callback).to receive(:define_metric).with("train", "rmse")
       expect(callback).to receive(:define_metric).with("eval", "rmse")
-      callback.after_iteration(model: mock_model, epoch: 0, history: history)
+      callback.after_iteration(mock_model, 0, history)
     end
 
     it "does not define metrics on subsequent iterations" do
-      callback.after_iteration(model: mock_model, epoch: 1, history: history)
+      callback.after_iteration(mock_model, 1, history)
       expect(callback).not_to receive(:define_metric)
-      callback.after_iteration(model: mock_model, epoch: 2, history: history)
+      callback.after_iteration(mock_model, 2, history)
     end
   end
 
   describe "#log_model_as_artifact" do
-    let(:callback) { described_class.new(log_model: true) }
+    let(:callback) { described_class.new(log_model: true, project_name: "my-great-project") }
     let(:mock_artifact) { instance_double(Wandb::Artifact) }
 
     before do
@@ -158,7 +170,7 @@ RSpec.describe Wandb::XGBoostCallback do
   end
 
   describe "#log_feature_importance" do
-    let(:callback) { described_class.new(log_feature_importance: true) }
+    let(:callback) { described_class.new(log_feature_importance: true, project_name: "my-great-project") }
     let(:mock_table) { instance_double(Wandb::Table) }
     let(:mock_plot) { instance_double(Wandb::Plot) }
 
@@ -181,7 +193,7 @@ RSpec.describe Wandb::XGBoostCallback do
   end
 
   describe "#define_metric" do
-    let(:callback) { described_class.new }
+    let(:callback) { described_class.new(**callback_params) }
 
     it "defines minimize metrics correctly" do
       expect(Wandb).to receive(:define_metric).with("train-error", summary: "min")
