@@ -56,7 +56,10 @@ module Wandb
       log_feature_importance(model) if @log_feature_importance
 
       # Log best score and best iteration
-      return model unless model.best_score
+      unless model.best_score
+        Wandb.finish
+        return model
+      end
 
       Wandb.log(
         "best_score" => model.best_score.to_f,
@@ -64,6 +67,7 @@ module Wandb
       )
 
       Wandb.finish
+      FileUtils.rm_rf(Rails.root.join("wandb"))
 
       model
     end
@@ -105,7 +109,7 @@ module Wandb
       fi_data = fi.map { |k, v| [k, v] }
 
       table = Wandb::Table.new(data: fi_data, columns: %w[Feature Importance])
-      bar_plot = Wandb::Plot.bar(table, "Feature", "Importance", title: "Feature Importance")
+      bar_plot = Wandb::Plot.bar(table.table, "Feature", "Importance", title: "Feature Importance")
       Wandb.log({ "Feature Importance" => bar_plot.__pyptr__ })
     end
 
