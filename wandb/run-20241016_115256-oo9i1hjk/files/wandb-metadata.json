@@ -1,0 +1,15 @@
+{
+  "os":  "macOS-14.1-arm64-arm-64bit",
+  "python":  "3.10.11",
+  "startedAt":  "2024-10-16T15:52:56.507480Z",
+  "program":  "<python with no main file>",
+  "git":  {
+    "remote":  "git@github.com:brettshollenberger/wandb_rb.git",
+    "commit":  "d55acbcf7e48e3f2269f3f7f03db7ca6adc76708"
+  },
+  "email":  "brett@fundera.com",
+  "root":  "/Users/brettshollenberger/programming/wandb",
+  "host":  "Bretts-MacBook-Pro-2.local",
+  "username":  "brettshollenberger",
+  "executable":  "/Users/brettshollenberger/.pyenv/shims/python3"
+}

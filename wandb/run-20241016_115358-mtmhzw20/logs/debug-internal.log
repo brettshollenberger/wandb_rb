@@ -1,0 +1,10 @@
+{"time":"2024-10-16T11:53:58.378634-04:00","level":"INFO","msg":"using version","core version":"0.18.3"}
+{"time":"2024-10-16T11:53:58.37874-04:00","level":"INFO","msg":"created symlink","path":"/Users/brettshollenberger/programming/wandb/wandb/run-20241016_115358-mtmhzw20/logs/debug-core.log"}
+{"time":"2024-10-16T11:53:58.387516-04:00","level":"ERROR","msg":"dialing: google: could not find default credentials. See https://cloud.google.com/docs/authentication/external/set-up-adc for more information"}
+{"time":"2024-10-16T11:53:58.400047-04:00","level":"INFO","msg":"created new stream","id":"mtmhzw20"}
+{"time":"2024-10-16T11:53:58.400136-04:00","level":"INFO","msg":"stream: started","id":"mtmhzw20"}
+{"time":"2024-10-16T11:53:58.400176-04:00","level":"INFO","msg":"handler: started","stream_id":{"value":"mtmhzw20"}}
+{"time":"2024-10-16T11:53:58.400154-04:00","level":"INFO","msg":"writer: Do: started","stream_id":{"value":"mtmhzw20"}}
+{"time":"2024-10-16T11:53:58.400359-04:00","level":"INFO","msg":"sender: started","stream_id":{"value":"mtmhzw20"}}
+{"time":"2024-10-16T11:53:58.622387-04:00","level":"INFO","msg":"wandb-core","!BADKEY":null}
+{"time":"2024-10-16T11:53:58.623107-04:00","level":"INFO","msg":"Starting system monitor"}
