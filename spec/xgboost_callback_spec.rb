@@ -60,10 +60,10 @@ RSpec.describe Wandb::XGBoostCallback do
     let(:model_params) { { "max_depth" => 3, "eta" => 0.1 } }
 
     before do
-      allow(mock_model).to receive(:params).and_return(model_params)
+      allow(mock_model).to receive(:save_config).and_return(model_params)
     end
 
-    it "updates Wandb config with model parameters" do
+    it "updates Wandb config with model parameters", :focus do
       expect(mock_run).to receive(:config=).with(model_params)
       expect(Wandb).to receive(:log).with(model_params)
       callback.before_training(mock_model)

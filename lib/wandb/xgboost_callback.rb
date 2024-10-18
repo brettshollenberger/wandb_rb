@@ -19,7 +19,7 @@ module Wandb
       end
     end
 
-    attr_accessor :project_name, :api_key
+    attr_accessor :project_name, :api_key, :custom_loggers
 
     def initialize(options = {})
       options = Opts.new(options)
@@ -29,22 +29,21 @@ module Wandb
       @define_metric = options.default(:define_metric, true)
       @api_key = options.default(:api_key, ENV["WANDB_API_KEY"])
       @project_name = options.default(:project_name, nil)
-
-      raise "WANDB_API_KEY required" unless api_key
-      raise "project_name required" unless project_name
-
-      Wandb.login(api_key: api_key)
-      Wandb.init(project: project_name)
-
-      return if Wandb.current_run
-
-      raise "You must call wandb.init() before WandbCallback()"
+      @custom_loggers = options.default(:custom_loggers, [])
     end
 
     def before_training(model)
-      # Update Wandb config with model configuration
-      Wandb.current_run.config = model.params
-      Wandb.log(model.params)
+      Wandb.login(api_key: api_key)
+      Wandb.init(project: project_name)
+      config = JSON.parse(model.save_config)
+      log_conf = {
+        learning_rate: config.dig("learner", "gradient_booster", "tree_train_param", "learning_rate").to_f,
+        max_depth: config.dig("learner", "gradient_booster", "tree_train_param", "max_depth").to_f,
+        n_estimators: model.num_boosted_rounds
+      }
+      Wandb.current_run.config = log_conf
+
+      Wandb.log(log_conf)
       model
     end
 
@@ -57,7 +56,7 @@ module Wandb
 
       # Log best score and best iteration
       unless model.best_score
-        Wandb.finish
+        finish
         return model
       end
 
@@ -65,18 +64,21 @@ module Wandb
         "best_score" => model.best_score.to_f,
         "best_iteration" => model.best_iteration.to_i
       )
-
-      Wandb.finish
-      FileUtils.rm_rf(Rails.root.join("wandb"))
+      finish
 
       model
+    end
+
+    def finish
+      Wandb.finish
+      FileUtils.rm_rf(File.join(Dir.pwd, "wandb"))
     end
 
     def before_iteration(_model, _epoch, _history)
       false
     end
 
-    def after_iteration(_model, epoch, history)
+    def after_iteration(model, epoch, history)
       history.each do |split, metric_scores|
         metric = metric_scores.keys.first
         values = metric_scores.values.last
@@ -85,6 +87,9 @@ module Wandb
         define_metric(split, metric) if @define_metric && epoch == 0
         full_metric_name = "#{split}-#{metric}"
         Wandb.log({ full_metric_name => epoch_value })
+      end
+      @custom_loggers.each do |logger|
+        logger.call(model, epoch, history)
       end
       Wandb.log("epoch" => epoch)
       false
