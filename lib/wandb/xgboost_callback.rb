@@ -1,6 +1,7 @@
 require "xgb"
 require "tempfile"
 require "fileutils"
+require "xgboost/training_callback"
 
 module Wandb
   class XGBoostCallback < XGBoost::TrainingCallback
