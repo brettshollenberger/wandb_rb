@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    wandb (0.1.6)
+    wandb (0.1.7)
       pycall
 
 GEM

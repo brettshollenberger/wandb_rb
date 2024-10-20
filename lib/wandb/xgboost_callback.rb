@@ -20,16 +20,18 @@ module Wandb
       end
     end
 
-    attr_accessor :project_name, :api_key, :custom_loggers
+    attr_accessor :project_name, :api_key, :custom_loggers, :history, :sample
 
     def initialize(options = {})
       options = Opts.new(options)
       @log_model = options.default(:log_model, false)
       @log_feature_importance = options.default(:log_feature_importance, true)
       @importance_type = options.default(:importance_type, "gain")
+      @normalize_feature_importance = options.default(:normalize_feature_importance, true)
       @define_metric = options.default(:define_metric, true)
       @api_key = options.default(:api_key, ENV["WANDB_API_KEY"])
       @project_name = options.default(:project_name, nil)
+      @sample = options.default(:sample, 1.0)
       @custom_loggers = options.default(:custom_loggers, [])
     end
 
@@ -80,19 +82,22 @@ module Wandb
     end
 
     def after_iteration(model, epoch, history)
-      history.each do |split, metric_scores|
-        metric = metric_scores.keys.first
-        values = metric_scores.values.last
-        epoch_value = values[epoch]
+      log_frequency = (1.0 / @sample).round
+      if epoch % log_frequency == 0
+        history.to_h.each do |split, metric_scores|
+          metric = metric_scores.keys.first
+          values = metric_scores.values.last
+          epoch_value = values[epoch]
 
-        define_metric(split, metric) if @define_metric && epoch == 0
-        full_metric_name = "#{split}-#{metric}"
-        Wandb.log({ full_metric_name => epoch_value })
+          define_metric(split, metric) if @define_metric && epoch == 0
+          full_metric_name = "#{split}-#{metric}"
+          Wandb.log({ full_metric_name => epoch_value })
+        end
+        @custom_loggers.each do |logger|
+          logger.call(model, epoch, history)
+        end
+        Wandb.log("epoch" => epoch)
       end
-      @custom_loggers.each do |logger|
-        logger.call(model, epoch, history)
-      end
-      Wandb.log("epoch" => epoch)
       false
     end
 
@@ -112,6 +117,12 @@ module Wandb
 
     def log_feature_importance(model)
       fi = model.score(importance_type: @importance_type)
+
+      if @normalize_feature_importance
+        total_importance = fi.values.sum
+        fi = fi.transform_values { |v| v / total_importance }
+      end
+
       fi_data = fi.map { |k, v| [k, v] }
 
       table = Wandb::Table.new(data: fi_data, columns: %w[Feature Importance])
