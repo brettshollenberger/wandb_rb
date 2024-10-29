@@ -73,6 +73,13 @@ module Wandb
     def plot
       Plot
     end
+
+    # Add this new method
+    def run_url
+      raise "No active run. Call Wandb.init() first." unless @current_run
+
+      @current_run.url
+    end
   end
 
   # Run class
@@ -112,6 +119,11 @@ module Wandb
 
     def log_artifact(artifact)
       @run.log_artifact(artifact.__pyptr__)
+    end
+
+    # Add this new method
+    def url
+      @run.get_url
     end
   end
 
