@@ -48,6 +48,14 @@ module Wandb
       @current_run = Run.new(run)
     end
 
+    def latest_run=(run)
+      @latest_run = run
+    end
+
+    def latest_run
+      @latest_run
+    end
+
     # Get the current run
     attr_reader :current_run
 
@@ -74,7 +82,6 @@ module Wandb
       Plot
     end
 
-    # Add this new method
     def run_url
       raise "No active run. Call Wandb.init() first." unless @current_run
 
