@@ -42,7 +42,7 @@ module Wandb
       log_conf = {
         learning_rate: config.dig("learner", "gradient_booster", "tree_train_param", "learning_rate").to_f,
         max_depth: config.dig("learner", "gradient_booster", "tree_train_param", "max_depth").to_f,
-        n_estimators: model.num_boosted_rounds
+        n_estimators: model.num_boosted_rounds,
       }
       Wandb.current_run.config = log_conf
 
@@ -65,7 +65,7 @@ module Wandb
 
       Wandb.log(
         "best_score" => model.best_score.to_f,
-        "best_iteration" => model.best_iteration.to_i
+        "best_iteration" => model.best_iteration.to_i,
       )
       finish
 
@@ -92,9 +92,6 @@ module Wandb
           define_metric(split, metric) if @define_metric && epoch == 0
           full_metric_name = "#{split}-#{metric}"
           Wandb.log({ full_metric_name => epoch_value })
-        end
-        @custom_loggers.each do |logger|
-          logger.call(model, epoch, history)
         end
         Wandb.log("epoch" => epoch)
       end
