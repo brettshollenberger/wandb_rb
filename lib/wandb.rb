@@ -251,8 +251,14 @@ module Wandb
   # Plot class
   class Plot
     class << self
-      def bar(table, x_key, y_key, title: nil)
-        py_plot = Wandb.__pyptr__.plot.bar(table.__pyptr__, x_key, y_key, title: title)
+      def bar(table, label:, value:, title: nil, split_table: false)
+        py_plot = Wandb.__pyptr__.plot.bar(
+          table: table.__pyptr__,
+          label: label,
+          value: value,
+          title: title,
+          split_table: split_table,
+        )
         new(py_plot)
       end
 
@@ -277,7 +283,7 @@ module Wandb
     end
 
     def __pyptr__
-      @plot
+      @plot.__pyptr__
     end
   end
 end
