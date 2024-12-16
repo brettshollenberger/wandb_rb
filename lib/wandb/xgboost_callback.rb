@@ -20,7 +20,9 @@ module Wandb
       end
     end
 
-    attr_accessor :project_name, :api_key, :custom_loggers, :history, :sample
+    attr_accessor :project_name, :api_key, :custom_loggers, :history, :sample,
+                  :log_model, :log_feature_importance, :importance_type, :define_metric,
+                  :normalize_feature_importance
 
     def initialize(options = {})
       options = Opts.new(options)
@@ -35,6 +37,19 @@ module Wandb
       @custom_loggers = options.default(:custom_loggers, [])
     end
 
+    def as_json
+      {
+        log_model: @log_model,
+        log_feature_importance: @log_feature_importance,
+        importance_type: @importance_type,
+        define_metric: @define_metric,
+        normalize_feature_importance: @normalize_feature_importance,
+        sample: @sample,
+        project_name: @project_name,
+        callback_type: :wandb,
+      }
+    end
+
     def before_training(model)
       Wandb.login(api_key: api_key)
       Wandb.init(project: project_name)
@@ -44,8 +59,6 @@ module Wandb
         max_depth: config.dig("learner", "gradient_booster", "tree_train_param", "max_depth").to_f,
         n_estimators: model.num_boosted_rounds,
       }
-      Wandb.current_run.config = log_conf
-
       Wandb.log(log_conf)
       model
     end
@@ -123,7 +136,7 @@ module Wandb
       fi_data = fi.map { |k, v| [k, v] }
 
       table = Wandb::Table.new(data: fi_data, columns: %w[Feature Importance])
-      bar_plot = Wandb::Plot.bar(table.table, "Feature", "Importance", title: "Feature Importance")
+      bar_plot = Wandb::Plot.bar(table.table, label: "Feature", value: "Importance", title: "Feature Importance")
       Wandb.log({ "Feature Importance" => bar_plot.__pyptr__ })
     end
 
