@@ -1,5 +1,4 @@
 require_relative "wandb/version"
-require "pry"
 require "pycall/import"
 
 # Ensure wandb executable isn't set using Ruby context
